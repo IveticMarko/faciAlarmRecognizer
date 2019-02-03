@@ -1,0 +1,19 @@
+C:\Users\User\Desktop\IvoCaric\our_Test_app\EventTutorial\EventTutorial\obj\Debug\EventTutorial.csprojResolveAssemblyReference.cache
+C:\Users\User\Desktop\IvoCaric\our_Test_app\EventTutorial\EventTutorial\bin\Debug\EventTutorial.exe.config
+C:\Users\User\Desktop\IvoCaric\our_Test_app\EventTutorial\EventTutorial\bin\Debug\EventTutorial.exe
+C:\Users\User\Desktop\IvoCaric\our_Test_app\EventTutorial\EventTutorial\bin\Debug\EventTutorial.pdb
+C:\Users\User\Desktop\IvoCaric\our_Test_app\EventTutorial\EventTutorial\obj\Debug\EventTutorial.exe
+C:\Users\User\Desktop\IvoCaric\our_Test_app\EventTutorial\EventTutorial\obj\Debug\EventTutorial.pdb
+C:\Users\Crni\Desktop\EventTutorial\EventTutorial\bin\Debug\EventTutorial.exe.config
+C:\Users\Crni\Desktop\EventTutorial\EventTutorial\bin\Debug\EventTutorial.exe
+C:\Users\Crni\Desktop\EventTutorial\EventTutorial\bin\Debug\EventTutorial.pdb
+C:\Users\Crni\Desktop\EventTutorial\EventTutorial\obj\Debug\EventTutorial.csprojResolveAssemblyReference.cache
+C:\Users\Crni\Desktop\EventTutorial\EventTutorial\obj\Debug\EventTutorial.csproj.CoreCompileInputs.cache
+C:\Users\Crni\Desktop\EventTutorial\EventTutorial\obj\Debug\EventTutorial.exe
+C:\Users\Crni\Desktop\EventTutorial\EventTutorial\obj\Debug\EventTutorial.pdb
+C:\Users\User\Desktop\New folder\EventTutorial\EventTutorial\bin\Debug\EventTutorial.exe.config
+C:\Users\User\Desktop\New folder\EventTutorial\EventTutorial\bin\Debug\EventTutorial.exe
+C:\Users\User\Desktop\New folder\EventTutorial\EventTutorial\bin\Debug\EventTutorial.pdb
+C:\Users\User\Desktop\New folder\EventTutorial\EventTutorial\obj\Debug\EventTutorial.exe
+C:\Users\User\Desktop\New folder\EventTutorial\EventTutorial\obj\Debug\EventTutorial.pdb
+C:\Users\User\Desktop\New folder\EventTutorial\EventTutorial\obj\Debug\EventTutorial.csprojResolveAssemblyReference.cache

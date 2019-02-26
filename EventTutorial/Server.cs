@@ -35,6 +35,8 @@ namespace EventTutorial
             {
                 DataReceivedEvent(this, args);
             }
+
+            //DataReceivedEvent?.Invoke(this, args);
         }
 
     }

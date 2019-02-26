@@ -11,12 +11,14 @@ namespace EventTutorial
     {       
         static void Main(string[] args)
         {
-            Console.WriteLine("Please insert LANCODE and press enter (for example: C35EBB59): ");
+            Console.WriteLine("Please insert LANCODE and press enter (for example: 59BB5EC3): ");
             var lanCode = Console.ReadLine();
-            //Note: here we don't have any checker for the input (for the lan code)!
+            //TODO: Note: here we don't have any checker for the input (for the lan code)!
 
-            ////Just for testing
-            //var lanCode = "C35EBB59";
+            lanCode = Reverse(lanCode);
+
+            //Load all devices that we have in the system. We will send data to those devices.
+            Cache.GetAllDevice();
 
             Server server = new Server();
             HandleDataClass hdc = new HandleDataClass();
@@ -37,6 +39,35 @@ namespace EventTutorial
                 Thread.Sleep(100);
             }
 
+        }
+        
+        public static string Reverse(string text)
+        {
+            char[] cArray = text.ToCharArray();
+            string reverse = String.Empty;
+            List<String> tempList = new List<string>();
+            List<String> reverseList = new List<string>();
+
+            var temp = "";
+            for (int i = 1; i <= cArray.Length; i++)
+            {
+                if ((i % 2) == 0)
+                {
+                    temp += cArray[i-1].ToString();
+                    tempList.Add(temp);
+                    temp = "";
+                }
+                temp = cArray[i-1].ToString();
+            }
+            
+            for (int i = tempList.Count - 1; i >= 0; i--)
+            {
+                reverseList.Add(tempList[i]);
+            }
+
+            reverse = String.Join("", reverseList);
+
+            return reverse;
         }
     }
 }

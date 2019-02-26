@@ -1,0 +1,7 @@
+Room information:
+1) Room ID
+2) Two letters GZ (group central)
+3) Room group
+4) Room name
+5) Room Status
+0=off, 1=sb, 2=aw, 3=aw2, 4=pat, 5=wc......

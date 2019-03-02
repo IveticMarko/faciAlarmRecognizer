@@ -249,6 +249,7 @@ namespace EventTutorial
                                 statusID = status,
                                 suplementData = suplementData,
                                 roomDescription = roomDescription,
+                                date = DateTime.Now
                             };
                             LoadAllActiveDevicesAndSendNotification(Int32.Parse(group), new List<SendingData> { sendingData }, null);
                         }
@@ -407,7 +408,7 @@ namespace EventTutorial
                     @"UPDATE entereddatatable
                       SET ActualStatusID = @ProcessedActualStatus, 
                           EditDate = GETUTCDATE()
-                      OUTPUT inserted.RoomID, inserted.RoomName, inserted.StatusID, inserted.SuplementData, inserted.AdditionalData
+                      OUTPUT inserted.RoomID, inserted.RoomName, inserted.StatusID, inserted.SuplementData, inserted.AdditionalData, inserted.CreationDate
                       WHERE GroupController = @GroupController
                             AND [Group] = @Group
                             AND ActualStatusID = @ActiveActualStatus";
@@ -435,7 +436,8 @@ namespace EventTutorial
                                     roomName = (reader["RoomName"].ToString()),
                                     statusID = Int32.Parse((reader["StatusID"].ToString())),
                                     suplementData = (reader["SuplementData"].ToString()),
-                                    roomDescription = (reader["AdditionalData"].ToString())
+                                    roomDescription = (reader["AdditionalData"].ToString()),
+                                    date = DateTime.Parse(reader["CreationDate"].ToString())
                                 };
 
                                 listOfSendingData.Add(data);

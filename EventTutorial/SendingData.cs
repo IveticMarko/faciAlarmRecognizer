@@ -22,5 +22,8 @@ namespace EventTutorial
 
         public string roomDescription
         { get; set; }
+
+        public DateTime date
+        { get; set; }
     }
 }

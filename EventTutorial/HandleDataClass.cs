@@ -24,16 +24,17 @@ namespace EventTutorial
 
         private const string CONNECTION_STRING = "Server=.\\SQLEXPRESS;Database=FaciDB;Integrated Security=true";
         private const string RECORD_SEPARATOR = @"<1E>";
-        private const string UNIT_SEPARATOR = @"<1F>";
+        //<20> is additional data here in the unit separator. Check if it is correct to have it here.
+        private const string UNIT_SEPARATOR = @"<20><1F>";
         private const string STATUS_CODE_STAND_BY = "sb";
 
         public void SubscribeToEvent(Server server, String lanCode)
         {
-            server.DataReceivedEvent += server_DataReceivedEvent;
+            server.DataReceivedEvent += Server_DataReceivedEvent;
             this.lanCode = lanCode;
         }
 
-        private void server_DataReceivedEvent(object sender, ReceivedDataArgs args)
+        private void Server_DataReceivedEvent(object sender, ReceivedDataArgs args)
         {
             //TODO: put this processing in separate function maybe.
             dataBlocks.Clear();
@@ -117,7 +118,7 @@ namespace EventTutorial
 
             Console.WriteLine("Text:    " + finalText);
             //TODO: put this in try or do the checks there.
-            DataProcessing(finalText);
+            //DataProcessing(finalText);
             LoggDataToDB(finalText);
 
             //INFO : printing in blocks
@@ -192,17 +193,20 @@ namespace EventTutorial
                         }
                         startIndex = 4;
                     }
-                    var roomID_1 = Int32.Parse(block.Substring(startIndex, 4).Replace("<", "").Replace(">",""));
-                    var roomID_2 = Int32.Parse(block.Substring(startIndex + 4, 4).Replace("<", "").Replace(">", ""));
+
+                    string[] separatedBlock = Regex.Split(block, UNIT_SEPARATOR);
+
+                    var roomID_1 = Int32.Parse(separatedBlock[0].Substring(startIndex, 4).Replace("<", "").Replace(">",""));
+                    var roomID_2 = Int32.Parse(separatedBlock[0].Substring(startIndex + 4, 4).Replace("<", "").Replace(">", ""));
                     var roomID = Int32.Parse(roomID_1.ToString() + roomID_2.ToString());
-                    var groupController = block.Substring(startIndex + 8, 2);
-                    var group = block.Substring(startIndex + 10, 1);
-                    var roomName = block.Substring(startIndex + 11, 4);
+                    var groupController = separatedBlock[0].Substring(startIndex + 8, 2);
+                    var group = separatedBlock[0].Substring(startIndex + 10, 1);
+                    var roomName = separatedBlock[0].Substring(startIndex + 11, 4);
                     
                     int status = -1;
                     try
                     {
-                        status = Int32.Parse(block.Substring(startIndex + 15, 4).Replace("<", "").Replace(">", ""));
+                        status = Int32.Parse(separatedBlock[0].Substring(startIndex + 15, 4).Replace("<", "").Replace(">", ""));
                     }
                     catch (Exception)
                     {
@@ -213,41 +217,139 @@ namespace EventTutorial
                     {
                         String suplementData = null;
                         String additionalData = null;
+                        String roomDescription = null;
 
                         try
                         {
-                            suplementData = block.Substring(startIndex + 19, 2);
+                            suplementData = separatedBlock[0].Substring(startIndex + 19, 2);
                         }
                         catch (Exception)
                         {
                             //just continue the process of data processing
                         }
-
+                        
                         //If length of data is greater than 21, that mean that we have some additional data
-                        if (block.Length > startIndex + 21)
+                        if (separatedBlock[0].Length > startIndex + 21)
                         {
-                            // <20> == space 
-                            additionalData = block.Substring(startIndex + 21, block.Length - (startIndex + 21)).Replace("<20>", " ");
+                            additionalData = separatedBlock[0].Substring(startIndex + 21, separatedBlock[0].Length - (startIndex + 21));
+                        }
+
+                        if (separatedBlock.Length > 1)
+                        {
+                            roomDescription = separatedBlock[1];
                         }
 
                         if (status != (int)RoomStatuses.aw && status != (int)RoomStatuses.aw2)
                         {
-                            EnterData(roomID, groupController, Int32.Parse(group), roomName, status, suplementData, additionalData);
+                            EnterData(roomID, groupController, Int32.Parse(group), roomName, status, suplementData, additionalData, roomDescription);
+                            SendingData sendingData = new SendingData
+                            {
+                                roomID = roomID,
+                                roomName = roomName,
+                                statusID = status,
+                                suplementData = suplementData,
+                                roomDescription = roomDescription,
+                            };
+                            LoadAllActiveDevicesAndSendNotification(Int32.Parse(group), new List<SendingData> { sendingData }, null);
                         }
                         else if (status == (int)RoomStatuses.aw) 
                         {
-                            loadCurrentStateAndSendNotification(groupController, Int32.Parse(group));
+                            LoadCurrentStateAndSendNotification(groupController, Int32.Parse(group));
                         }
                         else if (status == (int)RoomStatuses.aw2)
                         {
-                            //TODO: Disable sending, and check if that is correct.
+                            DisableSendingToClientDevices(Int32.Parse(group), roomID, null);
                         }
                     }
                 }
             }
         }
 
-        private void EnterData(int roomID, String groupController, int group, String roomName, int statusID, String suplementData, String additionalData)
+        private void DisableSendingToClientDevices(int group, int roomID, SqlConnection conn)
+        {
+            try
+            {
+                if (conn == null)
+                {
+                    conn = GetDBConnection();
+                    conn.Open();
+                }
+
+                const string SQL_DISABLE_SENDING = @"UPDATE cd
+                                                     SET Active = 0
+                                                     FROM clientdevicetable cd
+                                                     WHERE[Group] = @Group
+                                                             AND RoomID = @RoomID
+                                                             AND Active = 1";
+
+                using (SqlCommand cmd = new SqlCommand(SQL_DISABLE_SENDING, conn))
+                {
+                    cmd.Parameters.Add("@RoomID", SqlDbType.Int).Value = roomID;
+                    cmd.Parameters.Add("@Group", SqlDbType.TinyInt).Value = group;
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        private void LoadAllActiveDevicesAndSendNotification(int group, List<SendingData> listOfSendingData, SqlConnection conn) 
+        {
+            List<String> listOfTokens = new List<string>();
+
+            try
+            {
+                if (conn == null)
+                {
+                    conn = GetDBConnection();
+                    conn.Open();
+                }
+
+                const string SQL_LOAD_ACTIVE_DEVICES = @"SELECT ClientDeviceToken
+                                                         FROM clientdevicetable
+                                                         WHERE Active = 1
+                                                               AND [Group] = @Group
+                                                               AND ClientDeviceToken IS NOT NULL";
+
+                using (SqlCommand cmd = new SqlCommand(SQL_LOAD_ACTIVE_DEVICES, conn))
+                {
+                    cmd.Parameters.Add("@Group", SqlDbType.TinyInt).Value = group;
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.HasRows)
+                        {
+                            while (reader.Read())
+                            {
+                                listOfTokens.Add(reader["ClientDeviceToken"].ToString());
+                            }
+                        }
+                    }
+                    
+                    var json = ToJSON(listOfSendingData);
+
+                    foreach (var token in listOfTokens)
+                    {
+                        //Start NotificationSender Thread
+                        Thread notificationSender = new Thread(() =>
+                            NotificationSender.sendNotification(json, token));
+
+                        notificationSender.Start();
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        private void EnterData(int roomID, String groupController, int group, String roomName, int statusID, String suplementData, String additionalData, String roomDescription)
         {
             try
             {
@@ -263,9 +365,9 @@ namespace EventTutorial
 					                       AND ActualStatusID = @ActualStatusID)
                       BEGIN
                       INSERT INTO entereddatatable
-                      ([RoomID], [GroupController], [Group], [RoomName], [StatusID], [SuplementData], [AdditionalData], [ActualStatusID], [CreationDate])
+                      ([RoomID], [GroupController], [Group], [RoomName], [StatusID], [SuplementData], [AdditionalData], [RoomDescription], [ActualStatusID], [CreationDate])
                       VALUES
-                      (@RoomID, @GroupController, @Group, @RoomName, @StatusID, @SuplementData, @AdditionalData, @ActualStatusID, GETUTCDATE())
+                      (@RoomID, @GroupController, @Group, @RoomName, @StatusID, @SuplementData, @AdditionalData, @RoomDescription, @ActualStatusID, GETUTCDATE())
                       END";
 
                 using (SqlCommand cmd = new SqlCommand(SQL_ENTERED_DATA, conn))
@@ -277,6 +379,7 @@ namespace EventTutorial
                     cmd.Parameters.Add("@StatusID", SqlDbType.TinyInt).Value = statusID;
                     cmd.Parameters.Add("@SuplementData", SqlDbType.NVarChar, 2).Value = (String.IsNullOrEmpty(suplementData) ? "" : suplementData);
                     cmd.Parameters.Add("@AdditionalData", SqlDbType.NVarChar, 100).Value = (String.IsNullOrEmpty(additionalData) ? "" : additionalData);
+                    cmd.Parameters.Add("@RoomDescription", SqlDbType.NVarChar, 500).Value = (String.IsNullOrEmpty(roomDescription) ? "" : roomDescription);
                     cmd.Parameters.Add("@ActualStatusID", SqlDbType.Int).Value = ActualStatus.Active;
 
                     conn.Open();
@@ -291,8 +394,10 @@ namespace EventTutorial
             }
         }
 
-        private void loadCurrentStateAndSendNotification(String groupController, int group)
+        private void LoadCurrentStateAndSendNotification(String groupController, int group)
         {
+            List<SendingData> listOfSendingData = null;
+
             //TODO: think about try. How many of them we need here and what to do with errors.
             try
             {
@@ -320,6 +425,8 @@ namespace EventTutorial
                     {
                         if (reader.HasRows)
                         {
+                            listOfSendingData = new List<SendingData>();
+
                             while (reader.Read())
                             {
                                 SendingData data = new SendingData
@@ -328,27 +435,34 @@ namespace EventTutorial
                                     roomName = (reader["RoomName"].ToString()),
                                     statusID = Int32.Parse((reader["StatusID"].ToString())),
                                     suplementData = (reader["SuplementData"].ToString()),
-                                    additionalData = (reader["AdditionalData"].ToString())
+                                    roomDescription = (reader["AdditionalData"].ToString())
                                 };
 
-                                var json = ToJSON(data);
+                                listOfSendingData.Add(data);
 
-                                List<string> listOfTokens;
-                                Cache.devices.TryGetValue(group, out listOfTokens);
+                                //var json = ToJSON(new List<SendingData> { data });
 
-                                //TODO: this is done just for the test. Try to send message to every device.
-                                var token = listOfTokens[0];
+                                //List<string> listOfTokens;
+                                //Cache.devices.TryGetValue(group, out listOfTokens);
 
-                                //TEST: this is token of mine device.
-                                //"ct19Qyuc5PI:APA91bH8Otgu1I5kuLLnK0NIpO9ZWJ5bjpA5_iR4nEhWPLl779yx0n1Sm_5WkEXdGkP1oYmacdio97VqcF6L6PKED00b68YSgLd0XpN405IjahUTlrj8spwkHFuRLEV8ZYcrrjrsnfwa"
+                                ////TODO: this is done just for the test. Try to send message to every device.
+                                //var token = listOfTokens[0];
 
-                                //Start NotificationSender Thread
-                                Thread notificationSender = new Thread(() =>
-                                    NotificationSender.sendNotification(json, token)); 
+                                ////TEST: this is token of mine device.
+                                ////"ct19Qyuc5PI:APA91bH8Otgu1I5kuLLnK0NIpO9ZWJ5bjpA5_iR4nEhWPLl779yx0n1Sm_5WkEXdGkP1oYmacdio97VqcF6L6PKED00b68YSgLd0XpN405IjahUTlrj8spwkHFuRLEV8ZYcrrjrsnfwa"
 
-                                notificationSender.Start();
+                                ////Start NotificationSender Thread
+                                //Thread notificationSender = new Thread(() =>
+                                //    NotificationSender.sendNotification(json, token)); 
+
+                                //notificationSender.Start();
                             }
                         }
+                    }
+
+                    if (listOfSendingData != null)
+                    {
+                        LoadAllActiveDevicesAndSendNotification(group, listOfSendingData, conn);
                     }
                 }
             }
@@ -358,7 +472,7 @@ namespace EventTutorial
             }
         }
 
-        private string ToJSON(object obj)
+        private string ToJSON(List<SendingData> listOfobj)
         {
             //TODO: try to find dll for this bellow.
             //Namespace: System.Web.Script.Serialization
@@ -367,7 +481,7 @@ namespace EventTutorial
             //JavaScriptSerializer serializer = new JavaScriptSerializer();
             //return serializer.Serialize(obj);
 
-            return JsonConvert.SerializeObject(obj);
+            return JsonConvert.SerializeObject(listOfobj);
         }
 
     }

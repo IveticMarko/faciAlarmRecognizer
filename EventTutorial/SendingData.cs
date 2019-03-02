@@ -20,7 +20,7 @@ namespace EventTutorial
         public string suplementData
         { get; set; }
 
-        public string additionalData
+        public string roomDescription
         { get; set; }
     }
 }

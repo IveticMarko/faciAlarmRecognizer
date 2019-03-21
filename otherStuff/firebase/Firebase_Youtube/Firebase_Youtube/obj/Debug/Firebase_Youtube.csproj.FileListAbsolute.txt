@@ -1,0 +1,15 @@
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\Firebase_Youtube.exe.config
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\Firebase_Youtube.exe
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\Firebase_Youtube.pdb
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\FireSharp.dll
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\FireSharp.Serialization.JsonNet.dll
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\Newtonsoft.Json.dll
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\RestSharp.dll
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\Newtonsoft.Json.xml
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\bin\Debug\RestSharp.xml
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\obj\Debug\Firebase_Youtube.csprojResolveAssemblyReference.cache
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\obj\Debug\Firebase_Youtube.Form1.resources
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\obj\Debug\Firebase_Youtube.Properties.Resources.resources
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\obj\Debug\Firebase_Youtube.csproj.GenerateResource.Cache
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\obj\Debug\Firebase_Youtube.exe
+C:\Users\User\Desktop\firebase\Firebase_Youtube\Firebase_Youtube\obj\Debug\Firebase_Youtube.pdb

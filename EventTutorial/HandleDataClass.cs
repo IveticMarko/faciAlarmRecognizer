@@ -9,6 +9,10 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
+using FireSharp.Config;
+using FireSharp.Interfaces;
+using FireSharp.Response;
+
 namespace EventTutorial
 {
     class HandleDataClass
@@ -34,8 +38,35 @@ namespace EventTutorial
             this.lanCode = lanCode;
         }
 
+        IFirebaseConfig config = new FirebaseConfig
+        {
+            AuthSecret = "aGr320uEXJMvpV0efTCLFy9CEJ5plXcyoudwjPke",
+            BasePath = "https://testnotifying-7f790.firebaseio.com/"
+        };
+
+        IFirebaseClient client;
+
+        private async void getDataFromFirebase()
+        {
+            FirebaseResponse response = await client.GetTaskAsync("tokens/-LaX5XDEmA321T6H0GuU");
+            DataNotifications obj = response.ResultAs<DataNotifications>();
+        }
+
         private void Server_DataReceivedEvent(object sender, ReceivedDataArgs args)
         {
+            if (!Program.isFirebaseTriggered)
+            {
+                client = new FireSharp.FirebaseClient(config);
+
+                if (client != null)
+                {
+                    Program.isFirebaseTriggered = true;
+                }
+                
+                getDataFromFirebase();
+                //.WaitAndUnwrapException();
+            }
+
             //TODO: put this processing in separate function maybe.
             dataBlocks.Clear();
             data = "";

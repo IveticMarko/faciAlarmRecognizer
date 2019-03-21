@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 namespace EventTutorial
 {
     class Program
-    {       
+    {
+        public static Boolean isFirebaseTriggered = false;
+
         static void Main(string[] args)
         {
             Console.WriteLine("Please insert LANCODE and press enter (for example: 59BB5EC3): ");

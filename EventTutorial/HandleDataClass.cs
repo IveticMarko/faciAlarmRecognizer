@@ -118,7 +118,7 @@ namespace EventTutorial
 
             Console.WriteLine("Text:    " + finalText);
             //TODO: put this in try or do the checks there.
-            //DataProcessing(finalText);
+            DataProcessing(finalText);
             LoggDataToDB(finalText);
 
             //INFO : printing in blocks

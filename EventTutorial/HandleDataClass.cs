@@ -48,8 +48,41 @@ namespace EventTutorial
 
         private async void getDataFromFirebase()
         {
-            FirebaseResponse response = await client.GetTaskAsync("tokens/-LaX5XDEmA321T6H0GuU");
-            DataNotifications obj = response.ResultAs<DataNotifications>();
+            var i = 0;
+            while (true)
+            {
+                i++;
+
+                FirebaseResponse response = await client.GetTaskAsync("Information/" + i.ToString());
+                DataNotifications obj = null;
+                try
+                {
+                    obj = response.ResultAs<DataNotifications>();
+                }
+                catch (Exception)
+                {
+                    break;
+                }
+
+                if (obj != null)
+                {
+                    SqlConnection conn = GetDBConnection();
+                    const string SQL_LOGG_DATA =
+                        @"IF NOT EXISTS (SELECT 1
+			                     FROM clientdevicetable
+			                     WHERE ClientDeviceToken = @Token)
+                  INSERT INTO clientdevicetable (ClientDeviceToken , [Group], RoomID, Active)
+                  VALUES (@Token, @Group, @RoomID, 1)";
+                    using (SqlCommand cmd = new SqlCommand(SQL_LOGG_DATA, conn))
+                    {
+                        cmd.Parameters.Add("@Token", SqlDbType.NVarChar, 500).Value = obj.tokenID;
+                        cmd.Parameters.Add("@Group", SqlDbType.Int).Value = 3;
+                        cmd.Parameters.Add("@RoomID", SqlDbType.Int).Value = 21;
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+            }
         }
 
         private void Server_DataReceivedEvent(object sender, ReceivedDataArgs args)
@@ -62,9 +95,8 @@ namespace EventTutorial
                 {
                     Program.isFirebaseTriggered = true;
                 }
-                
+
                 getDataFromFirebase();
-                //.WaitAndUnwrapException();
             }
 
             //TODO: put this processing in separate function maybe.
@@ -176,6 +208,7 @@ namespace EventTutorial
             }
             return raw;
         }
+
         //Till unused!
         //public static byte[] StringToByteArray(string hex)
         //{
@@ -272,7 +305,7 @@ namespace EventTutorial
 
                         if (status != (int)RoomStatuses.aw && status != (int)RoomStatuses.aw2)
                         {
-                            EnterData(roomID, groupController, Int32.Parse(group), roomName, status, suplementData, additionalData, roomDescription);
+                            int enteredID = EnterData(roomID, groupController, Int32.Parse(group), roomName, status, suplementData, additionalData, roomDescription);
                             SendingData sendingData = new SendingData
                             {
                                 roomID = roomID,
@@ -282,7 +315,11 @@ namespace EventTutorial
                                 roomDescription = roomDescription,
                                 date = DateTime.Now
                             };
-                            LoadAllActiveDevicesAndSendNotification(Int32.Parse(group), new List<SendingData> { sendingData }, null);
+                            //If data was already sent, don't send again.
+                            if (enteredID == 0)
+                            {
+                                LoadAllActiveDevicesAndSendNotification(Int32.Parse(group), new List<SendingData> { sendingData }, true, null);
+                            }
                         }
                         else if (status == (int)RoomStatuses.aw) 
                         {
@@ -290,6 +327,7 @@ namespace EventTutorial
                         }
                         else if (status == (int)RoomStatuses.aw2)
                         {
+                            //TODO: ? ... discuss about this!
                             DisableSendingToClientDevices(Int32.Parse(group), roomID, null);
                         }
                     }
@@ -329,7 +367,7 @@ namespace EventTutorial
             }
         }
 
-        private void LoadAllActiveDevicesAndSendNotification(int group, List<SendingData> listOfSendingData, SqlConnection conn) 
+        private void LoadAllActiveDevicesAndSendNotification(int group, List<SendingData> listOfSendingData, bool sendToAll, SqlConnection conn) 
         {
             List<String> listOfTokens = new List<string>();
 
@@ -341,11 +379,17 @@ namespace EventTutorial
                     conn.Open();
                 }
 
-                const string SQL_LOAD_ACTIVE_DEVICES = @"SELECT ClientDeviceToken
-                                                         FROM clientdevicetable
-                                                         WHERE Active = 1
-                                                               AND [Group] = @Group
-                                                               AND ClientDeviceToken IS NOT NULL";
+                string SQL_LOAD_ACTIVE_DEVICES = @"SELECT ClientDeviceToken
+                                                   FROM clientdevicetable
+                                                   WHERE Active = 1
+                                                         AND [Group] = @Group
+                                                         AND ClientDeviceToken IS NOT NULL {0}";
+
+                
+                const string SQL_SEND_OUTSIDE_OF_THE_SYSTEM = "AND isInTheSystem = 1";
+
+                //On medical worker answer, send notification only to devices in the system.
+                SQL_LOAD_ACTIVE_DEVICES = !sendToAll ? SQL_LOAD_ACTIVE_DEVICES.Replace("{0}", SQL_SEND_OUTSIDE_OF_THE_SYSTEM) : SQL_LOAD_ACTIVE_DEVICES.Replace("{0}", String.Empty);
 
                 using (SqlCommand cmd = new SqlCommand(SQL_LOAD_ACTIVE_DEVICES, conn))
                 {
@@ -381,8 +425,10 @@ namespace EventTutorial
             }
         }
 
-        private void EnterData(int roomID, String groupController, int group, String roomName, int statusID, String suplementData, String additionalData, String roomDescription)
+        private int EnterData(int roomID, String groupController, int group, String roomName, int statusID, String suplementData, String additionalData, String roomDescription)
         {
+            int retVal = 0;
+
             try
             {
                 SqlConnection conn = GetDBConnection();
@@ -400,7 +446,15 @@ namespace EventTutorial
                       ([RoomID], [GroupController], [Group], [RoomName], [StatusID], [SuplementData], [AdditionalData], [RoomDescription], [ActualStatusID], [CreationDate])
                       VALUES
                       (@RoomID, @GroupController, @Group, @RoomName, @StatusID, @SuplementData, @AdditionalData, @RoomDescription, @ActualStatusID, GETUTCDATE())
-                      END";
+                      END
+                      ELSE
+                      SELECT ID
+                      FROM entereddatatable
+                      WHERE RoomID = @RoomID
+	                        AND GroupController = @GroupController
+	                        AND [Group] = @Group
+	                        AND SuplementData = @SuplementData
+	                        AND ActualStatusID = @ActualStatusID";
 
                 using (SqlCommand cmd = new SqlCommand(SQL_ENTERED_DATA, conn))
                 {
@@ -416,7 +470,13 @@ namespace EventTutorial
 
                     conn.Open();
 
-                    cmd.ExecuteNonQuery();
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            retVal = Int32.Parse((reader["ID"].ToString()));
+                        }
+                    }
                 }
 
             }
@@ -424,6 +484,8 @@ namespace EventTutorial
             {
                 throw;
             }
+
+            return retVal;
         }
 
         private void LoadCurrentStateAndSendNotification(String groupController, int group)
@@ -472,30 +534,13 @@ namespace EventTutorial
                                 };
 
                                 listOfSendingData.Add(data);
-
-                                //var json = ToJSON(new List<SendingData> { data });
-
-                                //List<string> listOfTokens;
-                                //Cache.devices.TryGetValue(group, out listOfTokens);
-
-                                ////TODO: this is done just for the test. Try to send message to every device.
-                                //var token = listOfTokens[0];
-
-                                ////TEST: this is token of mine device.
-                                ////"ct19Qyuc5PI:APA91bH8Otgu1I5kuLLnK0NIpO9ZWJ5bjpA5_iR4nEhWPLl779yx0n1Sm_5WkEXdGkP1oYmacdio97VqcF6L6PKED00b68YSgLd0XpN405IjahUTlrj8spwkHFuRLEV8ZYcrrjrsnfwa"
-
-                                ////Start NotificationSender Thread
-                                //Thread notificationSender = new Thread(() =>
-                                //    NotificationSender.sendNotification(json, token)); 
-
-                                //notificationSender.Start();
                             }
                         }
                     }
 
                     if (listOfSendingData != null)
                     {
-                        LoadAllActiveDevicesAndSendNotification(group, listOfSendingData, conn);
+                        LoadAllActiveDevicesAndSendNotification(group, listOfSendingData, false, conn);
                     }
                 }
             }
@@ -519,3 +564,8 @@ namespace EventTutorial
 
     }
 }
+
+//TODO: Priority?
+//and what to add in cache?
+
+//TODO: have a call with Ivo, because of "managing"!

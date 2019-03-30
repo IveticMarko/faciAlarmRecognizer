@@ -35,9 +35,10 @@ namespace EventTutorial
             var objNotification = new
             {
                 to = clientToken,
-                notification = new
+                priority = "high",
+                data = new
                 {
-                    title = "",
+                    title = "Alarm",
                     body = message
                 }
             };
